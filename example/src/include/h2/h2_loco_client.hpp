@@ -205,7 +205,7 @@ class H2LocoClient {
   }
 
   int32_t Damp() { return SetFsmId(1); }
-  int32_t Start() { return SetFsmId(500); }
+  int32_t Start() { return SetFsmId(601); }
   int32_t Squat() { return SetFsmId(2); }
   int32_t Sit() { return SetFsmId(3); }
   int32_t StandUp() { return SetFsmId(4); }
