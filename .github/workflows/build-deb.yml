@@ -1,0 +1,73 @@
+name: Build Debian Package for unitree_go
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+  workflow_dispatch:
+
+jobs:
+  build-deb:
+    name: ${{ matrix.distro }} / ${{ matrix.arch }}
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: humble
+            arch: amd64
+            runs_on: ubuntu-24.04
+            os_version: jammy
+          - distro: humble
+            arch: arm64
+            runs_on: ubuntu-24.04-arm
+            os_version: jammy
+          - distro: jazzy
+            arch: amd64
+            runs_on: ubuntu-24.04
+            os_version: noble
+          - distro: jazzy
+            arch: arm64
+            runs_on: ubuntu-24.04-arm
+            os_version: noble
+
+    container:
+      image: ros:${{ matrix.distro }}
+
+    steps:
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y \
+            cmake \
+            debhelper \
+            devscripts \
+            dh-python \
+            equivs \
+            fakeroot \
+            git \
+            libdebhelper-perl \
+            python3-bloom
+          apt-get install -y ros-${{ matrix.distro }}-rosidl-generator-dds-idl
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build debian package
+        run: |
+          . /opt/ros/${{ matrix.distro }}/setup.sh
+          rosdep update
+          cd cyclonedds_ws/src/unitree/unitree_go
+          bloom-generate rosdebian \
+            --os-name ubuntu \
+            --os-version ${{ matrix.os_version }} \
+            --ros-distro ${{ matrix.distro }}
+          apt-get build-dep -y .
+          fakeroot debian/rules binary
+
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unitree_go-${{ matrix.distro }}-${{ matrix.arch }}
+          path: cyclonedds_ws/src/unitree/*.deb
